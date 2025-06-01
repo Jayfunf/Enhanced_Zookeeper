@@ -21,11 +21,11 @@ public class ImprovedZooKeeperLock {
 	public void lock() throws Exception {
 		myNode = zk.create(lockPath + "/lock-", new byte[0],
 			ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
+		String myNodeName = myNode.substring(lockPath.length() + 1);
 
 		while (true) {
 			List<String> children = zk.getChildren(lockPath, false);
 			Collections.sort(children);
-			String myNodeName = myNode.substring(lockPath.length() + 1);
 			int myIndex = children.indexOf(myNodeName);
 
 			if (myIndex == 0) return;
@@ -35,16 +35,21 @@ public class ImprovedZooKeeperLock {
 			Stat stat = zk.exists(prevPath, false);
 
 			if (stat == null) {
+				Thread.sleep(5);
 				continue; // 삭제됨, 재확인 루프
 			}
 
 			CountDownLatch latch = new CountDownLatch(1);
-			zk.exists(prevPath, event -> {
+			Watcher watcher = event -> {
 				if (event.getType() == Watcher.Event.EventType.NodeDeleted) {
 					latch.countDown();
 				}
-			});
-			latch.await();
+			};
+
+			Stat watchStat = zk.exists(prevPath, watcher);
+			if (watchStat != null) {
+				latch.await();
+			}
 		}
 	}
 
