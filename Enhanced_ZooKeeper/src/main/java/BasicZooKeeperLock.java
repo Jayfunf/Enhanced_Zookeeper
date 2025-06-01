@@ -1,3 +1,4 @@
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -8,30 +9,31 @@ import org.apache.zookeeper.ZooKeeper;
 
 public class BasicZooKeeperLock {
 	private final ZooKeeper zk;
-	private final String lockBasePath;
-	private String currentNode;
+	private final String lockPath;
+	private String myNode;
 
-	public BasicZooKeeperLock(ZooKeeper zk, String lockBasePath) {
+	public BasicZooKeeperLock(ZooKeeper zk, String lockPath) {
 		this.zk = zk;
-		this.lockBasePath = lockBasePath;
+		this.lockPath = lockPath;
 	}
 
 	public void lock() throws Exception {
-		String path = zk.create(lockBasePath + "/lock_", new byte[0],
+		myNode = zk.create(lockPath + "/lock-", new byte[0],
 			ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
-		this.currentNode = path;
+		String myNodeName = myNode.substring(lockPath.length() + 1);
 
 		while (true) {
-			List<String> children = zk.getChildren(lockBasePath, false);
-			children.sort(String::compareTo);
-			int index = children.indexOf(path.substring(lockBasePath.length() + 1));
+			List<String> children = zk.getChildren(lockPath, false);
+			Collections.sort(children);
+			int myIndex = children.indexOf(myNodeName);
 
-			if (index == 0) break;
+			if (myIndex == 0) return;
 
-			String prevNode = children.get(index - 1);
-			final CountDownLatch latch = new CountDownLatch(1);
+			String prevNode = children.get(myIndex - 1);
+			String prevPath = lockPath + "/" + prevNode;
 
-			zk.exists(lockBasePath + "/" + prevNode, event -> {
+			CountDownLatch latch = new CountDownLatch(1);
+			zk.exists(prevPath, event -> {
 				if (event.getType() == Watcher.Event.EventType.NodeDeleted) {
 					latch.countDown();
 				}
@@ -42,8 +44,8 @@ public class BasicZooKeeperLock {
 	}
 
 	public void unlock() throws Exception {
-		if (currentNode != null) {
-			zk.delete(currentNode, -1);
+		if (myNode != null) {
+			zk.delete(myNode, -1);
 		}
 	}
 }
