@@ -12,7 +12,7 @@ import org.apache.zookeeper.ZooKeeper;
 public class ParallelLockTest {
 	private static final String LOCK_PATH = "/my-lock";
 	private static final int CLIENT_COUNT = 100;
-	private static final long TEST_TIMEOUT_SEC = 10;
+	private static final long TEST_TIMEOUT_SEC = 100;
 
 	public static void main(String[] args) throws Exception {
 		ZooKeeper initZk = new ZooKeeper("localhost:2181", 3000, null);
@@ -35,7 +35,8 @@ public class ParallelLockTest {
 					ZooKeeper zk = new ZooKeeper("localhost:2181", 2000, null);
 
 					// BasicZooKeeperLock lock = new BasicZooKeeperLock(zk, LOCK_PATH); // 개선 전 사용 시
-					ImprovedZooKeeperLock lock = new ImprovedZooKeeperLock(zk, LOCK_PATH); // 개선 후 사용 시
+					// ImprovedZooKeeperLock lock = new ImprovedZooKeeperLock(zk, LOCK_PATH); // 개선 후 사용 시
+					VersionedZooKeeperLock lock = new VersionedZooKeeperLock(zk, LOCK_PATH); // 강의에서 소개된 버저닝
 
 					String myNode = lock.lock(); // SimpleLock 코드
 
