@@ -43,5 +43,5 @@ ZooKeeper 분산 락의 Watch 누락 문제를 해결할 수 있는 개선 방�
 ![스크린샷 2025-06-03 23 16 45](https://github.com/user-attachments/assets/2e0ef64e-437a-4988-95af-af115115cb6d)
 
 # PDF 다운로드
-[ZooKeeperLockWatch누락_프로젝트 발표(web).pdf](https://github.com/user-attachments/files/20575179/ZooKeeperLockWatch._.web.pdf)
+[발표 자료 공유](https://github.com/user-attachments/files/20575397/ZooKeeperLockWatch._.web.pdf)
 
