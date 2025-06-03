@@ -11,8 +11,8 @@ import org.apache.zookeeper.ZooKeeper;
 
 public class ParallelLockTest {
 	private static final String LOCK_PATH = "/my-lock";
-	private static final int CLIENT_COUNT = 100;
-	private static final long TEST_TIMEOUT_SEC = 100;
+	private static final int CLIENT_COUNT = 1000;
+	private static final long TEST_TIMEOUT_SEC = 60;
 
 	public static void main(String[] args) throws Exception {
 		ZooKeeper initZk = new ZooKeeper("localhost:2181", 3000, null);
@@ -23,9 +23,10 @@ public class ParallelLockTest {
 		initZk.close();
 
 		ExecutorService executor = Executors.newFixedThreadPool(CLIENT_COUNT);
+		List<Long> waitTimes = Collections.synchronizedList(new ArrayList<>());
 		List<Integer> allClientList = Collections.synchronizedList(new ArrayList<>());
 		List<Integer> successList = Collections.synchronizedList(new ArrayList<>());
-		List<Integer> failureList = Collections.synchronizedList(new ArrayList<>());
+		List<Integer> lockOrder = Collections.synchronizedList(new ArrayList<>());
 
 		for (int i = 0; i < CLIENT_COUNT; i++) {
 			final int clientId = i;
@@ -35,15 +36,20 @@ public class ParallelLockTest {
 					ZooKeeper zk = new ZooKeeper("localhost:2181", 2000, null);
 
 					// BasicZooKeeperLock lock = new BasicZooKeeperLock(zk, LOCK_PATH); // 개선 전 사용 시
-					// ImprovedZooKeeperLock lock = new ImprovedZooKeeperLock(zk, LOCK_PATH); // 개선 후 사용 시
-					VersionedZooKeeperLock lock = new VersionedZooKeeperLock(zk, LOCK_PATH); // 강의에서 소개된 버저닝
+					ImprovedZooKeeperLock lock = new ImprovedZooKeeperLock(zk, LOCK_PATH); // 개선 후 사용 시
+					// VersionedZooKeeperLock lock = new VersionedZooKeeperLock(zk, LOCK_PATH); // 강의에서 소개된 버저닝
 
-					String myNode = lock.lock(); // SimpleLock 코드
+					long startTime = System.nanoTime(); // ==== 락 시도 시작 시간 ====
+					String myNode = lock.lock();
+					long endTime = System.nanoTime();   // ==== 락 획득 완료 시간 ====
 
 					if (myNode != null) {
 						System.out.println("LockTest - [" + clientId + "] 락 획득 성공: " + myNode);
-						lock.unlock();
+						long waitTime = endTime - startTime;
+						waitTimes.add(waitTime); // waitTime 기록
 						successList.add(clientId);
+						lockOrder.add(clientId); // 락 획득 순서 기록
+						lock.unlock();
 					}
 
 					zk.close();
@@ -60,12 +66,8 @@ public class ParallelLockTest {
 			executor.shutdownNow();
 		}
 
-		failureList.addAll(allClientList);
-		failureList.removeAll(successList);
+		LockTestResult result = new LockTestResult(waitTimes, successList, allClientList, lockOrder);
+		result.printStatistics("ImprovedZooKeeperLock");
 
-		System.out.println("\n=== Test Results ===");
-		System.out.println("AllList" + "(" + allClientList.size() + "): " + allClientList);
-		System.out.println("Success" + "(" + successList.size() + "): " + successList);
-		System.out.println("Failure" + "(" + failureList.size() + "): " + failureList);
 	}
 }
