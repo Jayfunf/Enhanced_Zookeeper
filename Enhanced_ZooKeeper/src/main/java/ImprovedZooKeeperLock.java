@@ -56,7 +56,7 @@ public class ImprovedZooKeeperLock {
 				continue;
 			}
 
-			boolean awaitSuccess = latch.await(3, TimeUnit.SECONDS);
+			boolean awaitSuccess = latch.await(1, TimeUnit.SECONDS);
 			if (!awaitSuccess) {
 				System.out.println("LockTest - 대기 타임아웃 발생, 다시 시도");
 				continue;
